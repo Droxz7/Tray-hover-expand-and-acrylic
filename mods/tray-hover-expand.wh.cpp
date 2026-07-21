@@ -1,12 +1,12 @@
 // ==WindhawkMod==
 // @id              tray-hover-expand
-// @name            Tray hover expand
-// @description     Open the hidden tray icons flyout on hover instead of clicking the chevron; optionally collapse it when the cursor leaves
-// @version         1.6.0
-// @author          wygodad
-// @github          https://github.com/wygodad
-// @include         windhawk.exe
-// @compilerOptions -lole32 -loleaut32 -lshell32
+// @name            Tray hover expand and acrylic
+// @description     Open the hidden system-tray icons popup on hover and give it a customizable translucent acrylic background
+// @version         1.9
+// @author          Jamz
+// @include         explorer.exe
+// @architecture    x86-64
+// @compilerOptions -lole32 -loleaut32 -lshell32 -lruntimeobject
 // @license         MIT
 // ==/WindhawkMod==
 
@@ -14,86 +14,115 @@
 /*
 # Tray hover expand
 
-![Demo](https://i.imgur.com/qsNUNpj.png)
+Makes the Windows 11 **hidden system-tray icons popup** faster to use and gives
+it a translucent acrylic background that matches other Windows 11 flyouts.
 
-Opens the hidden tray icons flyout (the "Show Hidden Icons" chevron) when you
-hover the cursor over it, instead of having to click. Optionally collapses it
-again once the cursor leaves the opened icons.
+Move the pointer over the **Show hidden icons** chevron (`^`) to open the popup.
+You can also have it close automatically after the pointer leaves the chevron
+and popup. Clicking the chevron continues to work normally.
 
-It works through UI Automation, so it does not hook internal shell functions —
-it is relatively safe and resilient across Windows builds. It runs as a tool
-mod in a dedicated process and does not inject into the shell.
+This mod affects only the hidden-icons popup. It does **not** make the taskbar
+translucent, hide the notification area, or modify Quick Settings, the calendar,
+notifications, or the Start menu.
 
-## How it differs from similar mods
-- *Taskbar tray icons hide on hover* auto-hides the whole tray area and reveals
-  it on hover.
-- *Show all taskbar notification icons* forces all hidden icons to always show.
-- This mod keeps the standard Windows overflow flyout and simply opens it on
-  hover (and optionally closes it when you move away).
+## Features
 
-## How the chevron is detected
-The "Show Hidden Icons" chevron has no language-independent unique identifier on
-Windows 11 (it shares AutomationId `SystemTrayIcon` with the clock, volume,
-battery, etc., and exposes no ExpandCollapse pattern). So detection is a hybrid:
-1. Match the button by name (the keyword list covers English and Polish by
-   default and can be extended in the settings).
-2. If no name matches (other languages), fall back to the leftmost tray button
-   with the configured AutomationId, which is normally the chevron.
+- Opens the standard Windows hidden-icons popup on hover.
+- Optionally closes it after the pointer leaves, with an adjustable delay.
+- Applies a real Windows `HostBackdrop` acrylic brush to the popup's existing
+  XAML background, without placing a second square window behind it.
+- Lets you adjust the darkness and luminosity of the acrylic effect.
+- Supports localized Windows installations through editable chevron-name
+  keywords and an automatic fallback.
+- Can avoid opening over fullscreen apps and can hide the chevron's **Hide**
+  tooltip while the popup is open.
 
-## Notes
-- For unsupported languages, add your locale's chevron name to the "Chevron name
-  keywords" setting, or rely on the leftmost-tray-icon fallback.
-- If auto-collapse does not work, the flyout window class name may differ on your
-  build. Change it in the "Flyout window class" setting.
-- Windows shows a "Hide" tooltip over the chevron while the flyout is open, which
-  can cover the bottom row of icons. Enable "Hide the chevron tooltip" to
-  suppress it.
-- By default the flyout is not opened while a fullscreen app is in the foreground
-  (e.g. a fullscreen video or a game), so it can't pop up over the content. Turn
-  off "Do not activate over fullscreen apps" to always activate.
+## Requirements and compatibility
+
+- Designed for Windows 11 and the standard Windows 11 system tray.
+- At least one notification icon must be hidden so that the `^` chevron exists.
+- Windows **Transparency effects** should be enabled. If transparency is disabled
+  or unavailable, Windows can show the brush's solid fallback colour instead.
+- The mod targets `explorer.exe`. Restarting Windows Explorer may be necessary
+  after the first installation or after a Windows update.
+
+The popup is an internal Windows XAML component, so a future Windows update may
+rename its elements, symbols, or window classes. The advanced settings provide
+fallback values for some of these changes.
+
+## Settings
+
+### Hover behaviour
+
+| Setting | Default | What it changes |
+| --- | ---: | --- |
+| **Collapse when the cursor leaves** (`autoClose`) | On | Closes the popup after the pointer leaves both the chevron and the popup. Turn it off if you want the popup to remain open until you click elsewhere. |
+| **Polling interval** (`pollInterval`) | 50 ms | How often the pointer position is checked. Lower values react faster but run the check more often. Values below 10 ms are limited to 10 ms. A range of 30–100 ms normally works well. |
+| **Collapse delay** (`grace`) | 200 ms | How long the pointer may remain outside before the popup closes. `0` closes immediately; 150–400 ms helps prevent accidental closing and flicker. |
+| **Hit area padding** (`pad`) | 4 px | Expands the hover target around the chevron. Increase it if the chevron is difficult to trigger; very large values can open the popup unintentionally. |
+| **Do not activate over fullscreen apps** (`suppressInFullscreen`) | On | Prevents the popup from appearing over fullscreen videos, presentations, or games. Turn it off if you always want hover activation. |
+| **Hide the chevron tooltip** (`hideTooltip`) | Off | Hides the Windows **Hide** tooltip while the popup is open, which can otherwise cover icons near the bottom. |
+
+### Acrylic appearance
+
+| Setting | Default | What it changes |
+| --- | ---: | --- |
+| **Background tint opacity** (`backgroundTintOpacity`) | 28 | Strength of the black tint, from 0 to 100. Lower values reveal more of the desktop; higher values make the popup darker and more solid. |
+| **Background luminosity** (`backgroundLuminosityOpacity`) | 55 | How strongly the backdrop's light and colour contribute to the acrylic material, from 0 to 100. This changes the frosted appearance; it is not a direct blur-radius control. |
+
+Suggested starting points:
+
+- **Balanced:** tint 28, luminosity 55 (defaults).
+- **Clearer/lighter:** tint 12, luminosity 45.
+- **Darker:** tint 45, luminosity 60.
+
+The exact result depends on the wallpaper, Windows theme, and system transparency
+settings. Changes are reapplied to popup backgrounds that the mod has already
+found.
+
+### Detection and compatibility (advanced)
+
+| Setting | Default | What it changes |
+| --- | --- | --- |
+| **Chevron name keywords** (`keywords`) | English and Polish terms | Case-insensitive pieces of the chevron's accessible name. Add the wording used by your Windows display language if hovering does not find the button. |
+| **Tray icon AutomationId** (`trayIconAutomationId`) | `SystemTrayIcon` | Fallback identifier used when no keyword matches. The leftmost matching tray button is treated as the chevron. Normally this should not be changed. |
+| **Flyout window class** (`flyoutClass`) | `TopLevelWindowForOverflowXamlIsland` | Used to detect whether the pointer is over the open popup. Change it only if auto-close stops working on a particular Windows build. |
+| **Tooltip window class** (`tooltipClass`) | `Xaml_WindowedPopupClass` | Used only by **Hide the chevron tooltip**. Change it only if tooltip hiding stops working on a particular Windows build. |
+
+## How chevron detection works
+
+Windows 11 does not expose a unique, language-independent identifier for the
+Show hidden icons chevron. It shares the `SystemTrayIcon` AutomationId with
+other notification-area controls and does not expose an ExpandCollapse pattern.
+The mod therefore:
+
+1. Searches for a tray button whose accessible name contains one of the
+   configured keywords.
+2. If no name matches, uses the leftmost tray button with the configured
+   AutomationId as a fallback.
+3. Invokes the standard button through UI Automation, so Windows itself opens
+   the normal popup.
+
+## Troubleshooting
+
+- **Hover does nothing:** add your language's name for Show hidden icons to
+  `keywords`. Also check whether a fullscreen app is active and whether
+  `suppressInFullscreen` is enabled.
+- **The popup opens but does not close automatically:** verify `autoClose`, then
+  check `flyoutClass` if your Windows build uses a different class name.
+- **The background is solid:** enable Windows Transparency effects, restart
+  Windows Explorer, then reopen the popup.
+- **The tooltip still appears:** enable `hideTooltip`; if necessary, verify the
+  advanced `tooltipClass` value for your Windows build.
+- **After a Windows update:** enable Windhawk logging, restart Explorer, open the
+  popup once, and check the mod's log output for symbol or XAML-element errors.
+
+## Uninstalling
+
+Disable or remove the mod in Windhawk and restart Windows Explorer. The original
+popup background is restored when the mod unloads.
 
 ---
-
-## Opis po polsku
-
-Otwiera schowek ukrytych ikon zasobnika (strzałkę „Pokaż ukryte ikony") po
-najechaniu kursorem, bez konieczności klikania. Opcjonalnie zwija go z powrotem,
-gdy kursor opuści otwarte ikony.
-
-Mod działa przez UI Automation, więc nie hookuje wewnętrznych funkcji powłoki —
-jest stosunkowo bezpieczny i odporny na zmiany między kompilacjami Windows.
-Działa jako „tool mod" w osobnym procesie i nie wstrzykuje się do powłoki.
-
-### Czym różni się od podobnych modów
-- *Taskbar tray icons hide on hover* automatycznie ukrywa cały obszar zasobnika
-  i odsłania go po najechaniu.
-- *Show all taskbar notification icons* wymusza stałe wyświetlanie wszystkich
-  ukrytych ikon.
-- Ten mod zachowuje standardowy schowek Windows i po prostu otwiera go po
-  najechaniu (a opcjonalnie zamyka po odjechaniu kursorem).
-
-### Jak wykrywana jest strzałka
-Strzałka „Pokaż ukryte ikony" nie ma w Windows 11 unikalnego, niezależnego od
-języka identyfikatora (dzieli AutomationId `SystemTrayIcon` z zegarem,
-głośnością, baterią itd. i nie udostępnia wzorca ExpandCollapse). Wykrywanie
-jest więc hybrydowe:
-1. Dopasowanie przycisku po nazwie (domyślna lista słów kluczowych obejmuje
-   angielski i polski; można ją rozszerzyć w ustawieniach).
-2. Gdy nazwa nie pasuje (inne języki) — pierwszy od lewej przycisk zasobnika ze
-   skonfigurowanym AutomationId, którym zwykle jest strzałka.
-
-### Uwagi
-- Dla nieobsługiwanych języków dodaj nazwę strzałki w swoim języku do ustawienia
-  „Słowa kluczowe nazwy strzałki" albo polegaj na powyższym mechanizmie zapasowym.
-- Jeśli auto-zwijanie nie działa, nazwa klasy okna schowka może się różnić na
-  Twojej kompilacji systemu. Zmień ją w ustawieniu „Klasa okna schowka".
-- Gdy schowek jest otwarty, Windows pokazuje nad strzałką podpowiedź „Ukryj",
-  która potrafi zasłaniać dolny rząd ikon. Włącz „Ukryj podpowiedź strzałki",
-  aby ją wyłączyć.
-- Domyślnie schowek nie otwiera się, gdy na pierwszym planie jest aplikacja
-  pełnoekranowa (np. film na pełnym ekranie lub gra), więc nie wyskoczy on na
-  wierzchu treści. Wyłącz „Nie aktywuj na aplikacjach pełnoekranowych", aby
-  aktywować zawsze.
 */
 // ==/WindhawkModReadme==
 
@@ -144,6 +173,12 @@ jest więc hybrydowe:
   $name:pl-PL: Klasa okna podpowiedzi
   $description: Window class of the chevron tooltip, hidden only when "Hide the chevron tooltip" is enabled. Change it if hiding does not work on your build.
   $description:pl-PL: Klasa okna podpowiedzi strzałki, ukrywanej tylko gdy włączono „Ukryj podpowiedź strzałki". Zmień ją, jeśli ukrywanie nie działa na Twojej kompilacji.
+- backgroundTintOpacity: 28
+  $name: Background tint opacity
+  $description: Strength of the black acrylic tint from 0 to 100. Lower values reveal more of the desktop; higher values make the popup darker and more solid.
+- backgroundLuminosityOpacity: 55
+  $name: Background luminosity
+  $description: How strongly the backdrop's light and colour contribute to the acrylic material, from 0 to 100. This is not a direct blur-radius control.
 - trayIconAutomationId: SystemTrayIcon
   $name: Tray icon AutomationId (fallback)
   $name:pl-PL: AutomationId ikony zasobnika (mechanizm zapasowy)
@@ -155,7 +190,19 @@ jest więc hybrydowe:
 #include <windows.h>
 #include <shellapi.h>
 #include <uiautomation.h>
+#include <windhawk_utils.h>
+
+#undef GetCurrentTime
+
+#include <winrt/Windows.Foundation.h>
+#include <winrt/Windows.UI.h>
+#include <winrt/Windows.UI.Xaml.h>
+#include <winrt/Windows.UI.Xaml.Controls.h>
+#include <winrt/Windows.UI.Xaml.Media.h>
+
 #include <atomic>
+#include <iterator>
+#include <list>
 #include <string>
 #include <vector>
 #include <algorithm>
@@ -174,6 +221,8 @@ struct Settings {
     std::wstring flyoutClass = L"TopLevelWindowForOverflowXamlIsland";
     std::wstring tooltipClass = L"Xaml_WindowedPopupClass";
     std::wstring trayIconAutomationId = L"SystemTrayIcon";
+    int flyoutOpacity = 220;
+    int acrylicTint = 65;
     std::vector<std::wstring> keywords = {
         L"ukryte ikony", L"hidden icons", L"rozwiń", L"overflow"
     };
@@ -189,6 +238,140 @@ static std::atomic<int> g_settingsGeneration{0};
 static std::atomic<bool> g_running{false};
 static HANDLE g_thread = nullptr;
 static HANDLE g_stopEvent = nullptr;
+
+// ---- Flyout translucency ----
+
+enum ACCENT_STATE {
+    ACCENT_DISABLED = 0,
+    ACCENT_ENABLE_BLURBEHIND = 3,
+    ACCENT_ENABLE_ACRYLICBLURBEHIND = 4,
+};
+
+struct ACCENT_POLICY {
+    ACCENT_STATE AccentState;
+    DWORD AccentFlags;
+    DWORD GradientColor;
+    DWORD AnimationId;
+};
+
+enum WINDOWCOMPOSITIONATTRIB {
+    WCA_ACCENT_POLICY = 19,
+};
+
+struct WINDOWCOMPOSITIONATTRIBDATA {
+    WINDOWCOMPOSITIONATTRIB Attrib;
+    PVOID pvData;
+    SIZE_T cbData;
+};
+
+using SetWindowCompositionAttribute_t =
+    BOOL(WINAPI*)(HWND, WINDOWCOMPOSITIONATTRIBDATA*);
+
+static HWND g_styledFlyout = nullptr;
+static LONG_PTR g_originalFlyoutExStyle = 0;
+static bool g_savedFlyoutStyle = false;
+static bool g_originalLayeredAttributesValid = false;
+static COLORREF g_originalLayeredColorKey = 0;
+static BYTE g_originalLayeredAlpha = 255;
+static DWORD g_originalLayeredFlags = 0;
+
+static SetWindowCompositionAttribute_t GetSetWindowCompositionAttribute() {
+    static SetWindowCompositionAttribute_t function =
+        reinterpret_cast<SetWindowCompositionAttribute_t>(
+            GetProcAddress(GetModuleHandleW(L"user32.dll"),
+                           "SetWindowCompositionAttribute"));
+    return function;
+}
+
+static void RestoreFlyoutAppearance() {
+    if (!g_styledFlyout || !IsWindow(g_styledFlyout)) {
+        g_styledFlyout = nullptr;
+        g_savedFlyoutStyle = false;
+        return;
+    }
+
+    if (auto setComposition = GetSetWindowCompositionAttribute()) {
+        ACCENT_POLICY policy{};
+        policy.AccentState = ACCENT_DISABLED;
+
+        WINDOWCOMPOSITIONATTRIBDATA data{};
+        data.Attrib = WCA_ACCENT_POLICY;
+        data.pvData = &policy;
+        data.cbData = sizeof(policy);
+        setComposition(g_styledFlyout, &data);
+    }
+
+    if (g_originalLayeredAttributesValid) {
+        SetLayeredWindowAttributes(g_styledFlyout,
+                                   g_originalLayeredColorKey,
+                                   g_originalLayeredAlpha,
+                                   g_originalLayeredFlags);
+    } else {
+        SetLayeredWindowAttributes(g_styledFlyout, 0, 255, LWA_ALPHA);
+    }
+
+    if (g_savedFlyoutStyle) {
+        SetWindowLongPtrW(g_styledFlyout, GWL_EXSTYLE,
+                          g_originalFlyoutExStyle);
+        SetWindowPos(g_styledFlyout, nullptr, 0, 0, 0, 0,
+                     SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER |
+                         SWP_NOACTIVATE | SWP_FRAMECHANGED);
+    }
+
+    g_styledFlyout = nullptr;
+    g_savedFlyoutStyle = false;
+    g_originalLayeredAttributesValid = false;
+}
+
+static void ApplyFlyoutTranslucency(HWND flyout, const Settings& s) {
+    if (!flyout || !IsWindow(flyout)) return;
+
+    if (g_styledFlyout != flyout) {
+        RestoreFlyoutAppearance();
+
+        g_styledFlyout = flyout;
+        g_originalFlyoutExStyle =
+            GetWindowLongPtrW(flyout, GWL_EXSTYLE);
+        g_savedFlyoutStyle = true;
+
+        if (g_originalFlyoutExStyle & WS_EX_LAYERED) {
+            g_originalLayeredAttributesValid =
+                GetLayeredWindowAttributes(flyout,
+                                           &g_originalLayeredColorKey,
+                                           &g_originalLayeredAlpha,
+                                           &g_originalLayeredFlags) != FALSE;
+        }
+
+        SetWindowLongPtrW(flyout, GWL_EXSTYLE,
+                          g_originalFlyoutExStyle | WS_EX_LAYERED);
+        SetWindowPos(flyout, nullptr, 0, 0, 0, 0,
+                     SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER |
+                         SWP_NOACTIVATE | SWP_FRAMECHANGED);
+    }
+
+    int opacity = std::clamp(s.flyoutOpacity, 0, 255);
+    int tint = std::clamp(s.acrylicTint, 0, 255);
+
+    // GradientColor uses the AABBGGRR byte order. The tint is black, so only
+    // its alpha byte needs to be set.
+    if (auto setComposition = GetSetWindowCompositionAttribute()) {
+        ACCENT_POLICY policy{};
+        policy.AccentState = ACCENT_ENABLE_ACRYLICBLURBEHIND;
+        policy.AccentFlags = 2;
+        policy.GradientColor = static_cast<DWORD>(tint) << 24;
+
+        WINDOWCOMPOSITIONATTRIBDATA data{};
+        data.Attrib = WCA_ACCENT_POLICY;
+        data.pvData = &policy;
+        data.cbData = sizeof(policy);
+        setComposition(flyout, &data);
+    }
+
+    SetLayeredWindowAttributes(flyout, 0,
+                               static_cast<BYTE>(opacity), LWA_ALPHA);
+    RedrawWindow(flyout, nullptr, nullptr,
+                 RDW_INVALIDATE | RDW_FRAME | RDW_ALLCHILDREN);
+}
 
 static Settings GetSettingsSnapshot() {
     AcquireSRWLockShared(&g_settingsLock);
@@ -558,9 +741,298 @@ static DWORD WINAPI WorkerThread(LPVOID) {
 
     if (pBtn) pBtn->Release();
     if (pAuto) pAuto->Release();
+    RestoreFlyoutAppearance();
     CoUninitialize();
     return 0;
 }
+
+// ---- Explorer-side XAML background styling ----
+
+namespace PopupStyle {
+
+namespace Xaml = winrt::Windows::UI::Xaml;
+namespace Controls = winrt::Windows::UI::Xaml::Controls;
+namespace Media = winrt::Windows::UI::Xaml::Media;
+
+struct StyledBorder {
+    winrt::weak_ref<Controls::Border> border;
+    Media::Brush originalBackground{nullptr};
+};
+
+static std::vector<StyledBorder> g_styledBorders;
+static std::atomic<bool> g_unloading{false};
+static std::atomic<bool> g_symbolsHooked{false};
+static int g_tintOpacity = 28;
+static int g_luminosityOpacity = 55;
+
+using FrameworkElementLoadedEventRevoker = winrt::impl::event_revoker<
+    Xaml::IFrameworkElement,
+    &winrt::impl::abi<Xaml::IFrameworkElement>::type::remove_Loaded>;
+
+static std::list<FrameworkElementLoadedEventRevoker> g_loadedRevokers;
+
+static void LoadStyleSettings() {
+    g_tintOpacity = std::clamp(
+        static_cast<int>(Wh_GetIntSetting(L"backgroundTintOpacity")), 0, 100);
+    g_luminosityOpacity = std::clamp(
+        static_cast<int>(Wh_GetIntSetting(L"backgroundLuminosityOpacity")),
+        0, 100);
+}
+
+static Media::AcrylicBrush CreateAcrylicBrush() {
+    Media::AcrylicBrush brush;
+    brush.BackgroundSource(Media::AcrylicBackgroundSource::HostBackdrop);
+    brush.TintColor(winrt::Windows::UI::Color{255, 0, 0, 0});
+    brush.FallbackColor(winrt::Windows::UI::Color{235, 18, 18, 18});
+    brush.TintOpacity(g_tintOpacity / 100.0);
+    brush.TintLuminosityOpacity(g_luminosityOpacity / 100.0);
+    brush.Opacity(1.0);
+    return brush;
+}
+
+static Xaml::FrameworkElement FindDescendantByName(
+    Xaml::FrameworkElement parent, const wchar_t* name) {
+    if (!parent) return nullptr;
+
+    int count = Media::VisualTreeHelper::GetChildrenCount(parent);
+    for (int i = 0; i < count; i++) {
+        auto child = Media::VisualTreeHelper::GetChild(parent, i)
+                         .try_as<Xaml::FrameworkElement>();
+        if (!child) continue;
+        if (child.Name() == name) return child;
+        if (auto found = FindDescendantByName(child, name)) return found;
+    }
+
+    return nullptr;
+}
+
+static Xaml::FrameworkElement FindOverflowAncestor(
+    Xaml::FrameworkElement element) {
+    auto current = element;
+    while (current) {
+        if (winrt::get_class_name(current) ==
+            L"SystemTray.NotificationAreaOverflow") {
+            return current;
+        }
+        current = Media::VisualTreeHelper::GetParent(current)
+                      .try_as<Xaml::FrameworkElement>();
+    }
+    return nullptr;
+}
+
+static bool IsStored(Controls::Border border) {
+    for (auto it = g_styledBorders.begin(); it != g_styledBorders.end();) {
+        auto stored = it->border.get();
+        if (!stored) {
+            it = g_styledBorders.erase(it);
+            continue;
+        }
+        if (winrt::get_abi(stored) == winrt::get_abi(border)) return true;
+        ++it;
+    }
+    return false;
+}
+
+static void StyleFromIcon(Xaml::FrameworkElement icon) {
+    if (g_unloading) return;
+
+    auto overflow = FindOverflowAncestor(icon);
+    if (!overflow) return;
+
+    auto border = FindDescendantByName(
+                      overflow, L"OverflowFlyoutBackgroundBorder")
+                      .try_as<Controls::Border>();
+    if (!border) {
+        Wh_Log(L"OverflowFlyoutBackgroundBorder wasn't found");
+        return;
+    }
+
+    if (!IsStored(border)) {
+        StyledBorder stored;
+        stored.border = border;
+        stored.originalBackground = border.Background();
+        g_styledBorders.push_back(stored);
+    }
+
+    border.Background(CreateAcrylicBrush());
+    Wh_Log(L"Applied real acrylic system-tray background");
+}
+
+static void ReapplyAll() {
+    for (auto it = g_styledBorders.begin(); it != g_styledBorders.end();) {
+        auto border = it->border.get();
+        if (!border) {
+            it = g_styledBorders.erase(it);
+            continue;
+        }
+        border.Background(CreateAcrylicBrush());
+        ++it;
+    }
+}
+
+static void RestoreAll() {
+    for (auto& stored : g_styledBorders) {
+        if (auto border = stored.border.get()) {
+            border.Background(stored.originalBackground);
+        }
+    }
+    g_styledBorders.clear();
+    g_loadedRevokers.clear();
+}
+
+using IconViewConstructor_t = void*(WINAPI*)(void*);
+static IconViewConstructor_t IconViewConstructor_Original;
+
+static void* WINAPI IconViewConstructor_Hook(void* pThis) {
+    void* result = IconViewConstructor_Original(pThis);
+    if (g_unloading) return result;
+
+    try {
+        Xaml::FrameworkElement icon = nullptr;
+        reinterpret_cast<IUnknown**>(pThis)[1]->QueryInterface(
+            winrt::guid_of<Xaml::FrameworkElement>(), winrt::put_abi(icon));
+        if (!icon) return result;
+
+        g_loadedRevokers.emplace_back();
+        auto revoker = std::prev(g_loadedRevokers.end());
+        *revoker = icon.Loaded(
+            winrt::auto_revoke_t{},
+            [revoker](winrt::Windows::Foundation::IInspectable const& sender,
+                      Xaml::RoutedEventArgs const&) {
+                g_loadedRevokers.erase(revoker);
+                if (g_unloading) return;
+                if (auto element = sender.try_as<Xaml::FrameworkElement>()) {
+                    StyleFromIcon(element);
+                }
+            });
+    } catch (...) {
+        Wh_Log(L"Popup style error: 0x%08X", winrt::to_hresult());
+    }
+
+    return result;
+}
+
+static bool HookSystemTrayModule(HMODULE module) {
+    if (!module || g_symbolsHooked.exchange(true)) return true;
+
+    WindhawkUtils::SYMBOL_HOOK hooks[] = {{
+        {LR"(public: __cdecl winrt::SystemTray::implementation::IconView::IconView(void))"},
+        &IconViewConstructor_Original,
+        IconViewConstructor_Hook,
+    }};
+
+    if (!HookSymbols(module, hooks, ARRAYSIZE(hooks))) {
+        g_symbolsHooked = false;
+        Wh_Log(L"Failed to hook the SystemTray IconView constructor");
+        return false;
+    }
+
+    return true;
+}
+
+using LoadLibraryExW_t = decltype(&LoadLibraryExW);
+static LoadLibraryExW_t LoadLibraryExW_Original;
+
+static HMODULE WINAPI LoadLibraryExW_Hook(LPCWSTR fileName, HANDLE file,
+                                          DWORD flags) {
+    HMODULE module = LoadLibraryExW_Original(fileName, file, flags);
+    if (module && !g_symbolsHooked && fileName) {
+        const wchar_t* baseName = wcsrchr(fileName, L'\\');
+        baseName = baseName ? baseName + 1 : fileName;
+        if (_wcsicmp(baseName, L"SystemTray.dll") == 0 ||
+            _wcsicmp(baseName, L"Taskbar.View.dll") == 0 ||
+            _wcsicmp(baseName, L"ExplorerExtensions.dll") == 0) {
+            if (HookSystemTrayModule(module)) Wh_ApplyHookOperations();
+        }
+    }
+    return module;
+}
+
+static HMODULE FindSystemTrayModule() {
+    if (HMODULE module = GetModuleHandleW(L"SystemTray.dll")) return module;
+    if (HMODULE module = GetModuleHandleW(L"Taskbar.View.dll")) return module;
+    return GetModuleHandleW(L"ExplorerExtensions.dll");
+}
+
+using WindowThreadProc = void(WINAPI*)(void*);
+
+static bool RunOnWindowThread(HWND window, WindowThreadProc proc) {
+    if (!window) return false;
+    static UINT message = RegisterWindowMessageW(
+        L"Windhawk_TrayHoverExpand_AcrylicUIThread");
+
+    struct Params {
+        WindowThreadProc proc;
+    } params{proc};
+
+    DWORD threadId = GetWindowThreadProcessId(window, nullptr);
+    if (!threadId) return false;
+    if (threadId == GetCurrentThreadId()) {
+        proc(nullptr);
+        return true;
+    }
+
+    HHOOK hook = SetWindowsHookExW(
+        WH_CALLWNDPROC,
+        [](int code, WPARAM wParam, LPARAM lParam) -> LRESULT {
+            if (code == HC_ACTION) {
+                auto messageData = reinterpret_cast<CWPSTRUCT*>(lParam);
+                if (messageData->message == message) {
+                    reinterpret_cast<Params*>(messageData->lParam)->proc(nullptr);
+                }
+            }
+            return CallNextHookEx(nullptr, code, wParam, lParam);
+        },
+        nullptr, threadId);
+    if (!hook) return false;
+
+    SendMessageW(window, message, 0, reinterpret_cast<LPARAM>(&params));
+    UnhookWindowsHookEx(hook);
+    return true;
+}
+
+static HWND FindXamlWindow() {
+    if (HWND overflow =
+            FindWindowW(L"TopLevelWindowForOverflowXamlIsland", nullptr)) {
+        return overflow;
+    }
+    HWND taskbar = FindWindowW(L"Shell_TrayWnd", nullptr);
+    return taskbar
+               ? FindWindowExW(
+                     taskbar, nullptr,
+                     L"Windows.UI.Composition.DesktopWindowContentBridge",
+                     nullptr)
+               : nullptr;
+}
+
+static BOOL Init() {
+    g_unloading = false;
+    LoadStyleSettings();
+
+    if (HMODULE module = FindSystemTrayModule()) {
+        return HookSystemTrayModule(module);
+    }
+
+    HMODULE kernelBase = GetModuleHandleW(L"kernelbase.dll");
+    auto loadLibrary = reinterpret_cast<LoadLibraryExW_t>(
+        GetProcAddress(kernelBase, "LoadLibraryExW"));
+    return loadLibrary &&
+           Wh_SetFunctionHook(reinterpret_cast<void*>(loadLibrary),
+                              reinterpret_cast<void*>(LoadLibraryExW_Hook),
+                              reinterpret_cast<void**>(&LoadLibraryExW_Original));
+}
+
+static void SettingsChanged() {
+    LoadStyleSettings();
+    RunOnWindowThread(FindXamlWindow(), [](void*) { ReapplyAll(); });
+}
+
+static void Uninit() {
+    g_unloading = true;
+    RunOnWindowThread(FindXamlWindow(), [](void*) { RestoreAll(); });
+}
+
+}  // namespace PopupStyle
 
 // ---- Mod lifecycle (tool mod) ----
 
@@ -663,6 +1135,7 @@ void WhTool_ModUninit() {
 // Currently, other callbacks are not supported.
 
 bool g_isToolModProcessLauncher;
+bool g_isExplorerStyleProcess;
 HANDLE g_toolModProcessMutex;
 
 void WINAPI EntryPoint_Hook() {
@@ -671,6 +1144,29 @@ void WINAPI EntryPoint_Hook() {
 }
 
 BOOL Wh_ModInit() {
+    WCHAR processPath[MAX_PATH];
+    if (GetModuleFileNameW(nullptr, processPath, ARRAYSIZE(processPath))) {
+        const wchar_t* processName = wcsrchr(processPath, L'\\');
+        processName = processName ? processName + 1 : processPath;
+        if (_wcsicmp(processName, L"explorer.exe") == 0) {
+            g_isExplorerStyleProcess = true;
+            Wh_Log(L"Loading tray hover worker and acrylic background in Explorer");
+
+            if (!PopupStyle::Init()) {
+                Wh_Log(L"Failed to initialize the acrylic background");
+                return FALSE;
+            }
+
+            if (!WhTool_ModInit()) {
+                Wh_Log(L"Failed to initialize the tray hover worker");
+                PopupStyle::Uninit();
+                return FALSE;
+            }
+
+            return TRUE;
+        }
+    }
+
     DWORD sessionId;
     if (ProcessIdToSessionId(GetCurrentProcessId(), &sessionId) &&
         sessionId == 0) {
@@ -750,6 +1246,10 @@ BOOL Wh_ModInit() {
 }
 
 void Wh_ModAfterInit() {
+    if (g_isExplorerStyleProcess) {
+        return;
+    }
+
     if (!g_isToolModProcessLauncher) {
         return;
     }
@@ -806,6 +1306,12 @@ void Wh_ModAfterInit() {
 }
 
 void Wh_ModSettingsChanged() {
+    if (g_isExplorerStyleProcess) {
+        WhTool_ModSettingsChanged();
+        PopupStyle::SettingsChanged();
+        return;
+    }
+
     if (g_isToolModProcessLauncher) {
         return;
     }
@@ -814,6 +1320,12 @@ void Wh_ModSettingsChanged() {
 }
 
 void Wh_ModUninit() {
+    if (g_isExplorerStyleProcess) {
+        WhTool_ModUninit();
+        PopupStyle::Uninit();
+        return;
+    }
+
     if (g_isToolModProcessLauncher) {
         return;
     }
