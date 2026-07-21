@@ -15,6 +15,8 @@
 /*
 # Tray hover expand
 
+![Demo](https://i.imgur.com/qsNUNpj.png)
+
 Makes the Windows 11 **hidden system-tray icons popup** faster to use and gives
 it a translucent acrylic background that matches other Windows 11 flyouts.
 
